@@ -33,14 +33,23 @@ import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
 
-    private final int height = 64;
-    private final int width = 64;
-    private final int n_channels = 3;
-    private final String input_folder = "inputs";
-    private final String model_folder = "models";
-    private final String model_name = "yolov5s.ptl";
+    // PARAMETERS
+    // CUSTOMIZE HERE
+    private final int       inputHeight     = 64;
+    private final int       inputWidth      = 64;
+    private final int       inputChannels   = 3;
+    private final int       inputBatch      = 1;
+    private final String    inputFolder     = "inputs";
+    private final String    modelFolder     = "models";
+    private final String    modelName       = "yolov5s.ptl";
+
+    // UTILS
     private final DecimalFormat df = new DecimalFormat("#.###");
+
+    // PERMISSIONS
     private static final int PERMISSION_REQUEST_WRITE_STORAGE = 1;
+
+    // ASSETS
     private final String name_external_folder = "/torchscript";
     private final String path_external_assets = Environment.getExternalStorageDirectory().getAbsolutePath() + name_external_folder;
 
@@ -124,18 +133,18 @@ public class MainActivity extends AppCompatActivity {
     public double estimate_fps() {
         double fps = -1;
         try {
-            copyAsset(path_external_assets, "models/", model_name);
-            Module model = LiteModuleLoader.load(path_external_assets + "/" + model_name);
+            copyAsset(path_external_assets, modelFolder + "/", modelName);
+            Module model = LiteModuleLoader.load(path_external_assets + "/" + modelName);
             AssetManager assetManager = getAssets();
-            String[] images_names = assetManager.list(input_folder);
+            String[] images_names = assetManager.list(inputFolder);
 
             // execution time list
             ArrayList<Long> exec_time = new ArrayList<Long>();
 
             for (String image_name: images_names) {
-                Bitmap bitmap = BitmapFactory.decodeStream(getAssets().open(input_folder + "/" + image_name));
+                Bitmap bitmap = BitmapFactory.decodeStream(getAssets().open(inputFolder + "/" + image_name));
                 // Resize
-                Bitmap resized_bitmap = Bitmap.createScaledBitmap(bitmap, width, height, true);
+                Bitmap resized_bitmap = Bitmap.createScaledBitmap(bitmap, inputWidth, inputHeight, true);
                 Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(resized_bitmap,
                         TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
 
@@ -146,8 +155,8 @@ public class MainActivity extends AppCompatActivity {
                 exec_time.add(stop - start);
             }
             fps = get_mean_fps(exec_time);
-        } catch (IOException e) {
-            Log.d("estimate_fps", "can not estimate fps");
+        } catch (IOException ioException) {
+            Log.d("estimate_fps", ioException.getMessage());
         }
         return fps;
     }

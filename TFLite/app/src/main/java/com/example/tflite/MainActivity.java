@@ -71,14 +71,19 @@ public class MainActivity extends AppCompatActivity {
     public  double estimate_fps() {
         double fps = -1;
         try {
-            // Load model
+
+            // Load model file to byte buffer
             Context context = getApplicationContext();
             MappedByteBuffer mappedByteBuffer = FileUtil.loadMappedFile(context, modelPath);
-            Interpreter.Options options = new Interpreter.Options();
-            options.setNumThreads(threads);
-            Interpreter interpreter = new Interpreter(mappedByteBuffer, options);
 
-            TextView field = (TextView) findViewById(R.id.model_name);
+            // Create interpreter
+            Interpreter.Options options = new Interpreter.Options();
+
+            // Set number of threads
+            options.setNumThreads(threads);
+
+            // Setup interpreter
+            Interpreter interpreter = new Interpreter(mappedByteBuffer, options);
 
             AssetManager assetManager = getAssets();
             String[] images_names = assetManager.list(inputFolder);
@@ -112,8 +117,8 @@ public class MainActivity extends AppCompatActivity {
                 exec_time.add(stop - start);
             }
             return get_mean_fps(exec_time);
-        } catch (IOException e) {
-            Log.d("estimate_on_click", "Something went wrong");
+        } catch (IOException ioException) {
+            Log.d("estimate_on_click", ioException.getMessage());
         }
         return fps;
     }
