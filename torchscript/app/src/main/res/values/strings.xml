@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">torchscript</string>
+    <string name="model_name">YoloV5S</string>
+    <string name="input_shape">64x64</string>
+    <string name="framework_name">Torch</string>
+    <string name="button_label">Estimate</string>
+</resources>

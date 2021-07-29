@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">TFLite S_128 C_2</string>
+    <string name="model_name">YoloV5S</string>
+    <string name="framework_name">TFLite</string>
+    <string name="input_size">64x64</string>
+</resources>
