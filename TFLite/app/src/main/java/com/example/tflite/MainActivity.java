@@ -28,14 +28,13 @@ public class MainActivity extends AppCompatActivity {
 
     // PARAMETERS
     // CUSTOMIZE HERE
-    private final int       inputBatch      = 1;
-    private final int       inputChannels   = 3;
+    private final int       input_repeat    = 4; // Repeat inputs n times.
+    private final int       exec_time_shift = 4; // Drop first n elements from exec_time.
     private final int       inputHeight     = 128;
     private final int       inputWidth      = 128;
-    private final int[]     output_shape    = {1, 1008, 85};
     private final String    modelPath       = "models/yolov5s-fp16.tflite";
-    private final int       threads         = 2;
-    private final DataType  modelDtype      = DataType.FLOAT32;
+    private final int       threads         = 4;
+    private final DataType  modelDtype      = DataType.FLOAT32; // [quant = UIN8; default = FLOAT32]
 
     // ASSETS
     private final String inputFolder = "inputs";
@@ -95,27 +94,29 @@ public class MainActivity extends AppCompatActivity {
 
             // execution time list
             ArrayList<Long> exec_time = new ArrayList<Long>();
+            for (int i = 0; i < input_repeat; i++){
+                for (String image_name : images_names) {
 
-            for (String image_name: images_names) {
+                    TensorBuffer outputs = TensorBuffer.createFixedSize(interpreter.getOutputTensor(0).shape(), DataType.FLOAT32);
 
-                TensorBuffer outputs = TensorBuffer.createFixedSize( output_shape, modelDtype );
+                    // Load image
+                    TensorImage tensorImage = new TensorImage(modelDtype);
+                    Bitmap bitmap = BitmapFactory.decodeStream(getAssets().open(
+                            inputFolder + "/" + image_name));
 
-                // Load image
-                TensorImage tensorImage = new TensorImage(modelDtype);
-                Bitmap bitmap = BitmapFactory.decodeStream(getAssets().open(
-                        inputFolder + "/" + image_name));
+                    // Pre-process loaded image
+                    tensorImage.load(bitmap);
+                    tensorImage = imageProcessor.process(tensorImage);
 
-                // Pre-process loaded image
-                tensorImage.load(bitmap);
-                tensorImage = imageProcessor.process(tensorImage);
+                    // inference
+                    long start = System.currentTimeMillis();
+                    interpreter.run(tensorImage.getBuffer(), outputs.getBuffer());
+                    long stop = System.currentTimeMillis();
 
-                // inference
-                long start = System.currentTimeMillis();
-                interpreter.run(tensorImage.getBuffer(), outputs.getBuffer());
-                long stop = System.currentTimeMillis();
-
-                exec_time.add(stop - start);
+                    exec_time.add(stop - start);
+                }
             }
+            exec_time = new ArrayList<Long>(exec_time.subList(exec_time_shift, exec_time.size()));
             return get_mean_fps(exec_time);
         } catch (IOException ioException) {
             Log.d("estimate_on_click", ioException.getMessage());

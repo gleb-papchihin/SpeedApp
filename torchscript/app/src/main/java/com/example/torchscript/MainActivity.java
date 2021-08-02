@@ -37,8 +37,8 @@ public class MainActivity extends AppCompatActivity {
     // CUSTOMIZE HERE
     private final int       inputHeight     = 64;
     private final int       inputWidth      = 64;
-    private final int       inputChannels   = 3;
-    private final int       inputBatch      = 1;
+    private final int       input_repeat    = 8; // Repeat inputs n times.
+    private final int       exec_time_shift = 4; // Drop first n elements from exec_time.
     private final String    inputFolder     = "inputs";
     private final String    modelFolder     = "models";
     private final String    modelName       = "yolov5s.ptl";
@@ -140,20 +140,22 @@ public class MainActivity extends AppCompatActivity {
 
             // execution time list
             ArrayList<Long> exec_time = new ArrayList<Long>();
+            for (int i = 0; i < input_repeat; i++) {
+                for (String image_name : images_names) {
+                    Bitmap bitmap = BitmapFactory.decodeStream(getAssets().open(inputFolder + "/" + image_name));
+                    // Resize
+                    Bitmap resized_bitmap = Bitmap.createScaledBitmap(bitmap, inputWidth, inputHeight, true);
+                    Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(resized_bitmap,
+                            TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
 
-            for (String image_name: images_names) {
-                Bitmap bitmap = BitmapFactory.decodeStream(getAssets().open(inputFolder + "/" + image_name));
-                // Resize
-                Bitmap resized_bitmap = Bitmap.createScaledBitmap(bitmap, inputWidth, inputHeight, true);
-                Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(resized_bitmap,
-                        TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
+                    long start = System.currentTimeMillis();
+                    model.forward(IValue.from(inputTensor));
+                    long stop = System.currentTimeMillis();
 
-                long start = System.currentTimeMillis();
-                model.forward(IValue.from(inputTensor));
-                long stop = System.currentTimeMillis();
-
-                exec_time.add(stop - start);
+                    exec_time.add(stop - start);
+                }
             }
+            exec_time = new ArrayList<Long>(exec_time.subList(exec_time_shift, exec_time.size()));
             fps = get_mean_fps(exec_time);
         } catch (IOException ioException) {
             Log.d("estimate_fps", ioException.getMessage());

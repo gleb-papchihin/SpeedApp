@@ -37,6 +37,8 @@ public class MainActivity extends AppCompatActivity {
     private final int       inputChannels   = 3;
     private final int       inputWidth      = 64;
     private final int       inputHeight     = 64;
+    private final int       input_repeat    = 8; // Repeat inputs n times.
+    private final int       exec_time_shift = 4; // Drop first n elements from exec_time.
     private final String    modelPath       = "models/yolov5s.all.ort";
     private final boolean   torchMode       = true;
 
@@ -149,27 +151,29 @@ public class MainActivity extends AppCompatActivity {
                 // Load input meta
                 Map<String, NodeInfo> inputMetaMap = session.getInputInfo();
                 NodeInfo inputMeta = inputMetaMap.values().iterator().next();
+                for (int i = 0; i < input_repeat; i++) {
+                    for (String inputName : inputsNames) {
 
-                for (String inputName : inputsNames) {
+                        // Load input as bitmap
+                        Bitmap bitmap = loadResizedInput(inputFolder + "/" + inputName, inputWidth, inputHeight);
 
-                    // Load input as bitmap
-                    Bitmap bitmap = loadResizedInput(inputFolder + "/" + inputName, inputWidth, inputHeight);
+                        // Create and fill float array
+                        float[][][][] inputArray = new float[inputBatch][inputChannels][inputHeight][inputWidth];
+                        fillInputArrayTorchMode(bitmap, inputArray);
 
-                    // Create and fill float array
-                    float[][][][] inputArray = new float[inputBatch][inputChannels][inputHeight][inputWidth];
-                    fillInputArrayTorchMode(bitmap, inputArray);
+                        // Create onnx input tensor
+                        OnnxTensor inputTensor = OnnxTensor.createTensor(env, inputArray);
+                        Map<String, OnnxTensor> container = new HashMap<>();
+                        container.put(inputMeta.getName(), inputTensor);
 
-                    // Create onnx input tensor
-                    OnnxTensor inputTensor = OnnxTensor.createTensor(env, inputArray);
-                    Map<String, OnnxTensor> container = new HashMap<>();
-                    container.put(inputMeta.getName(), inputTensor);
-
-                    long start = System.currentTimeMillis();
-                    OrtSession.Result result = session.run(container);
-                    long stop = System.currentTimeMillis();
-                    Log.d("Time", "" + (stop-start));
-                    exec_time.add(stop - start);
+                        long start = System.currentTimeMillis();
+                        OrtSession.Result result = session.run(container);
+                        long stop = System.currentTimeMillis();
+                        Log.d("Time", "" + (stop - start));
+                        exec_time.add(stop - start);
+                    }
                 }
+                exec_time = new ArrayList<Long>(exec_time.subList(exec_time_shift, exec_time.size()));
 
             } catch (OrtException ortException) {
                 Log.d("EstimateFPS: ORTEx", ortException.getMessage());
